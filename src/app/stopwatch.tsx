@@ -1,12 +1,51 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function Stopwatch() {
   const [time, setTime] = useState<number>(0);
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Animations
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  // Fade-in on load
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  // Pulse animation when running
+  useEffect(() => {
+    if (isRunning) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 800,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isRunning]);
+
+  // Start/Stop timer
   const startStop = () => {
     if (isRunning) {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -17,6 +56,20 @@ export default function Stopwatch() {
       }, 10);
     }
     setIsRunning(!isRunning);
+
+    // Button scale animation
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.92,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      })
+    ]).start();
   };
 
   const reset = () => {
@@ -24,6 +77,14 @@ export default function Stopwatch() {
     intervalRef.current = null;
     setIsRunning(false);
     setTime(0);
+
+    Animated.timing(scaleAnim, {
+      toValue: 0.92,
+      duration: 100,
+      useNativeDriver: true,
+    }).start(() => {
+      scaleAnim.setValue(1);
+    });
   };
 
   const formatTime = (milliseconds: number) => {
@@ -37,19 +98,33 @@ export default function Stopwatch() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.timerText}>{formatTime(time)}</Text>
+      <Animated.Text
+        style={[
+          styles.timerText,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: pulseAnim }],
+          },
+        ]}
+      >
+        {formatTime(time)}
+      </Animated.Text>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={startStop}
-          style={[styles.button, { backgroundColor: isRunning ? '#FF5252' : '#4CAF50' }]}
-        >
-          <Text style={styles.buttonText}>{isRunning ? 'Stop' : 'Start'}</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <TouchableOpacity
+            onPress={startStop}
+            style={[styles.button, { backgroundColor: isRunning ? '#FF6B6B' : '#55D85A' }]}
+          >
+            <Text style={styles.buttonText}>{isRunning ? 'Stop' : 'Start'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-        <TouchableOpacity onPress={reset} style={[styles.button, { backgroundColor: '#2196F3' }]}>
-          <Text style={styles.buttonText}>Reset</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <TouchableOpacity onPress={reset} style={[styles.button, { backgroundColor: '#4FA3F7' }]}>
+            <Text style={styles.buttonText}>Reset</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </View>
   );
@@ -58,27 +133,35 @@ export default function Stopwatch() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#0D0D0D',
     alignItems: 'center',
     justifyContent: 'center',
   },
   timerText: {
-    fontSize: 64,
+    fontSize: 70,
     color: '#FFFFFF',
     fontVariant: ['tabular-nums'],
-    marginBottom: 40,
+    marginBottom: 50,
+    textShadowColor: '#00FFD1',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
   },
   buttonContainer: {
     flexDirection: 'row',
     gap: 20,
   },
   button: {
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 42,
+    borderRadius: 12,
+    elevation: 5,
+    shadowColor: '#FFF',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   buttonText: {
-    fontSize: 20,
+    fontSize: 21,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
